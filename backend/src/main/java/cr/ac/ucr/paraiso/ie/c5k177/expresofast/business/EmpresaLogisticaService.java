@@ -1,10 +1,10 @@
 package cr.ac.ucr.paraiso.ie.c5k177.expresofast.business;
 
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import cr.ac.ucr.paraiso.ie.c5k177.expresofast.data.EmpresaLogisticaRepository;
 import cr.ac.ucr.paraiso.ie.c5k177.expresofast.domain.EmpresaLogistica;
+import cr.ac.ucr.paraiso.ie.c5k177.expresofast.exception.DuplicateResourceException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -24,6 +24,11 @@ public class EmpresaLogisticaService {
 
     @Transactional
     public EmpresaLogistica crear(EmpresaLogistica empresa) {
+        if (empresaRepository.existsByCedulaJuridica(empresa.getCedulaJuridica())) {
+            throw new DuplicateResourceException(
+                "Ya existe una empresa registrada con la cedula juridica " + empresa.getCedulaJuridica()
+            );
+        }
         return empresaRepository.save(empresa);
     }
 }

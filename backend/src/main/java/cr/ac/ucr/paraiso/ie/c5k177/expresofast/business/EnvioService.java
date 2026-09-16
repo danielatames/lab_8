@@ -41,17 +41,17 @@ public class EnvioService {
 
     @Transactional(readOnly = true)
     public List<EnvioResponseDTO> listarOptimizado() {
-        return envioRepository.findAllOptimizado().stream().map(this::mapearAResponseDTO) .collect(Collectors.toList());
+        return envioRepository.findAllOptimizado().stream().map(this::mapearAResponseDTO).collect(Collectors.toList());
     }
 
     @Transactional
     public EnvioResponseDTO registrarEnvio(EnvioRequestDTO dto) {
         Vehiculo vehiculo = vehiculoRepository.findById(dto.getVehiculoId()).orElseThrow(() -> new ResourceNotFoundException("Vehículo no encontrado"));
 
-        Conductor conductor = conductorRepository.findById(dto.getConductorId()).orElseThrow(() -> new ResourceNotFoundException("Conductor no encontrado"));
+        Conductor conductor = conductorRepository.findById(dto.getConductorId()) .orElseThrow(() -> new ResourceNotFoundException("Conductor no encontrado"));
 
         if (dto.getPesoKg().compareTo(vehiculo.getCapacidadKg()) > 0) {
-            throw new CapacidadExcedidaException( "El peso del envío (" + dto.getPesoKg() + " kg) supera la capacidad del vehículo (" + vehiculo.getCapacidadKg() + " kg)");
+            throw new CapacidadExcedidaException("El peso del envío (" + dto.getPesoKg()+ " kg) supera la capacidad del vehículo (" + vehiculo.getCapacidadKg() + " kg)");
         }
 
         Envio envio = new Envio();
@@ -69,22 +69,22 @@ public class EnvioService {
 
     @Transactional
     public EnvioResponseDTO actualizarEstado(Integer envioId, CambioEstadoDTO dto) {
-        Envio envio = envioRepository.findById(envioId) .orElseThrow(() -> new ResourceNotFoundException("Envío no encontrado"));
+        Envio envio = envioRepository.findById(envioId)
+                .orElseThrow(() -> new ResourceNotFoundException("Envío no encontrado"));
 
         String estadoAnterior = envio.getEstadoEnvio();
         String estadoNuevo = dto.getNuevoEstado();
 
-        //no se puede retroceder desde un estado final
         if (ESTADOS_FINALES.contains(estadoAnterior) && ESTADOS_RETROCESO.contains(estadoNuevo)) {
-            throw new InvalidStateTransitionException("Transición de estado no permitida para el envío " + envio.getCodigoRastreo());
+            throw new InvalidStateTransitionException(
+                    "Transición de estado no permitida para el envío " + envio.getCodigoRastreo());
         }
 
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        Usuario usuario = usuarioRepository.findByUsername(username) .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
+        Usuario usuario = usuarioRepository.findByUsername(username).orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
 
         envio.setEstadoEnvio(estadoNuevo);
 
-        //registro automático en la bitácora
         BitacoraEnvio bitacora = new BitacoraEnvio();
         bitacora.setEnvio(envio);
         bitacora.setEstadoAnterior(estadoAnterior);
@@ -126,5 +126,29 @@ public class EnvioService {
                 envio.getConductor().getNombre() + " " + envio.getConductor().getApellidos(),
                 envio.getFechaCreacion(),
                 envio.getFechaModificacion());
+    }
+
+    @Transactional
+    public EnvioResponseDTO cancelarEnvio(Integer envioId) {
+        Envio envio = envioRepository.findById(envioId)
+                .orElseThrow(() -> new ResourceNotFoundException("Envío no encontrado"));
+
+        if ("EN_TRANSITO".equals(envio.getEstadoEnvio())) {
+            throw new InvalidStateTransitionException("No se puede cancelar el envío " + envio.getCodigoRastreo()
+                    + " porque ya se encuentra en tránsito");
+        }
+
+        if (ESTADOS_FINALES.contains(envio.getEstadoEnvio())) {
+            throw new InvalidStateTransitionException("El envío " + envio.getCodigoRastreo() + " ya se encuentra en un estado final");
+        }
+
+        envio.setEstadoEnvio("CANCELADO");
+        return mapearAResponseDTO(envio);
+    }
+
+    @Transactional(readOnly = true)
+    public EnvioResponseDTO obtenerPorId(Integer id) {
+        Envio envio = envioRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Envio no encontrado"));
+        return mapearAResponseDTO(envio);
     }
 }
