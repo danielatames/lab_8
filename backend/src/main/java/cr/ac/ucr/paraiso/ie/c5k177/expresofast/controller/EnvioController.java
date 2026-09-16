@@ -32,7 +32,8 @@ public class EnvioController {
     }
 
     @PatchMapping("/{id}/estado")
-    public ResponseEntity<EnvioResponseDTO> actualizarEstado(@PathVariable Integer id, @Valid @RequestBody CambioEstadoDTO dto) {
+    public ResponseEntity<EnvioResponseDTO> actualizarEstado(@PathVariable Integer id,
+            @Valid @RequestBody CambioEstadoDTO dto) {
         EnvioResponseDTO actualizado = envioService.actualizarEstado(id, dto);
         return ResponseEntity.ok(actualizado);
     }
@@ -40,5 +41,10 @@ public class EnvioController {
     @GetMapping("/{id}/bitacora")
     public ResponseEntity<List<BitacoraResponseDTO>> obtenerBitacora(@PathVariable Integer id) {
         return ResponseEntity.ok(envioService.obtenerBitacora(id));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<EnvioResponseDTO> obtenerPorId(@PathVariable Integer id) {
+        return ResponseEntity.ok(envioService.obtenerPorId(id));
     }
 }
