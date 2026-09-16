@@ -24,19 +24,11 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        Usuario usuario = usuarioRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado: " + username));
+        Usuario usuario = usuarioRepository.findByUsername(username) .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado: " + username));
 
-        List<GrantedAuthority> authorities = usuario.getRoles().stream()
-                .map(rol -> new SimpleGrantedAuthority(rol.getNombreRol()))
-                .collect(Collectors.toList());
+        List<GrantedAuthority> authorities = usuario.getRoles().stream() .map(rol -> new SimpleGrantedAuthority(rol.getNombreRol())) .collect(Collectors.toList());
 
-        return new User(
-                usuario.getUsername(),
-                usuario.getPasswordHash(),
-                usuario.getActivo(),
-                true, true, true,
-                authorities
+        return new User(  usuario.getUsername(), usuario.getPasswordHash(),usuario.getActivo(),true, true, true, authorities
         );
     }
 }

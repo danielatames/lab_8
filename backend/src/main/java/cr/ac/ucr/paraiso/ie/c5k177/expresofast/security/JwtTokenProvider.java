@@ -31,49 +31,30 @@ public class JwtTokenProvider {
     public String generarToken(Authentication authentication) {
         String username = authentication.getName();
 
-        List<String> roles = authentication.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .collect(Collectors.toList());
+        List<String> roles = authentication.getAuthorities().stream().map(GrantedAuthority::getAuthority).collect(Collectors.toList());
 
         Date ahora = new Date();
         Date expiracion = new Date(ahora.getTime() + jwtExpirationMs);
 
-        return Jwts.builder()
-                .subject(username)
-                .claim("roles", roles)
-                .issuedAt(ahora)
-                .expiration(expiracion)
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
-                .compact();
+        return Jwts.builder().subject(username) .claim("roles", roles).issuedAt(ahora).expiration(expiracion) .signWith(getSigningKey(), SignatureAlgorithm.HS256).compact();
     }
 
     public String obtenerUsernameDeToken(String token) {
-        Claims claims = Jwts.parser()
-                .verifyWith(getSigningKey())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
+        Claims claims = Jwts.parser().verifyWith(getSigningKey()).build().parseSignedClaims(token).getPayload();
 
         return claims.getSubject();
     }
 
     @SuppressWarnings("unchecked")
     public List<String> obtenerRolesDeToken(String token) {
-        Claims claims = Jwts.parser()
-                .verifyWith(getSigningKey())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
+        Claims claims = Jwts.parser().verifyWith(getSigningKey()).build().parseSignedClaims(token).getPayload();
 
         return claims.get("roles", List.class);
     }
 
     public boolean validarToken(String token) {
         try {
-            Jwts.parser()
-                    .verifyWith(getSigningKey())
-                    .build()
-                    .parseSignedClaims(token);
+            Jwts.parser() .verifyWith(getSigningKey()).build().parseSignedClaims(token);
             return true;
         } catch (Exception ex) {
             return false;

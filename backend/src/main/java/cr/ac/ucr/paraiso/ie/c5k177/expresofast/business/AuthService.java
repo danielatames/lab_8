@@ -21,17 +21,14 @@ public class AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final UsuarioRepository usuarioRepository;
 
-    public AuthService(AuthenticationManager authenticationManager,
-                        JwtTokenProvider jwtTokenProvider,
-                        UsuarioRepository usuarioRepository) {
+    public AuthService(AuthenticationManager authenticationManager,JwtTokenProvider jwtTokenProvider,UsuarioRepository usuarioRepository) {
         this.authenticationManager = authenticationManager;
         this.jwtTokenProvider = jwtTokenProvider;
         this.usuarioRepository = usuarioRepository;
     }
 
     public AuthResponseDTO login(AuthRequestDTO request) {
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
+        Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
         );
 
         String token = jwtTokenProvider.generarToken(authentication);
@@ -41,8 +38,7 @@ public class AuthService {
                 .filter(rol -> rol.startsWith("ROLE_"))
                 .collect(Collectors.toList());
 
-        usuarioRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> new NoSuchElementException("Usuario no encontrado"));
+        usuarioRepository.findByUsername(request.getUsername()).orElseThrow(() -> new NoSuchElementException("Usuario no encontrado"));
 
         return new AuthResponseDTO(
                 token,
