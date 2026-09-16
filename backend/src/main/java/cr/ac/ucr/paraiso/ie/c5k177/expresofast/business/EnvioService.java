@@ -3,6 +3,7 @@ package cr.ac.ucr.paraiso.ie.c5k177.expresofast.business;
 import cr.ac.ucr.paraiso.ie.c5k177.expresofast.data.*;
 import cr.ac.ucr.paraiso.ie.c5k177.expresofast.domain.*;
 import cr.ac.ucr.paraiso.ie.c5k177.expresofast.dto.*;
+import cr.ac.ucr.paraiso.ie.c5k177.expresofast.exception.CapacidadExcedidaException;
 import cr.ac.ucr.paraiso.ie.c5k177.expresofast.exception.InvalidStateTransitionException;
 import cr.ac.ucr.paraiso.ie.c5k177.expresofast.exception.ResourceNotFoundException;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -27,10 +28,10 @@ public class EnvioService {
     private static final Set<String> ESTADOS_RETROCESO = Set.of("PENDIENTE", "EN_TRANSITO");
 
     public EnvioService(EnvioRepository envioRepository,
-                         VehiculoRepository vehiculoRepository,
-                         ConductorRepository conductorRepository,
-                         UsuarioRepository usuarioRepository,
-                         BitacoraEnvioRepository bitacoraEnvioRepository) {
+            VehiculoRepository vehiculoRepository,
+            ConductorRepository conductorRepository,
+            UsuarioRepository usuarioRepository,
+            BitacoraEnvioRepository bitacoraEnvioRepository) {
         this.envioRepository = envioRepository;
         this.vehiculoRepository = vehiculoRepository;
         this.conductorRepository = conductorRepository;
@@ -54,10 +55,7 @@ public class EnvioService {
                 .orElseThrow(() -> new ResourceNotFoundException("Conductor no encontrado"));
 
         if (dto.getPesoKg().compareTo(vehiculo.getCapacidadKg()) > 0) {
-            throw new IllegalArgumentException(
-                "El peso del envío (" + dto.getPesoKg() + " kg) supera la capacidad del vehículo ("
-                + vehiculo.getCapacidadKg() + " kg)"
-            );
+            throw new CapacidadExcedidaException( "El peso del envío (" + dto.getPesoKg() + " kg) supera la capacidad del vehículo (" + vehiculo.getCapacidadKg() + " kg)");
         }
 
         Envio envio = new Envio();
@@ -84,8 +82,7 @@ public class EnvioService {
         //no se puede retroceder desde un estado final
         if (ESTADOS_FINALES.contains(estadoAnterior) && ESTADOS_RETROCESO.contains(estadoNuevo)) {
             throw new InvalidStateTransitionException(
-                "Transición de estado no permitida para el envío " + envio.getCodigoRastreo()
-            );
+                    "Transición de estado no permitida para el envío " + envio.getCodigoRastreo());
         }
 
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -120,8 +117,7 @@ public class EnvioService {
                         b.getEstadoNuevo(),
                         b.getFechaCambio(),
                         b.getUsuario().getNombreCompleto(),
-                        b.getObservaciones()
-                ))
+                        b.getObservaciones()))
                 .collect(Collectors.toList());
     }
 
@@ -136,7 +132,6 @@ public class EnvioService {
                 envio.getVehiculo().getPlaca(),
                 envio.getConductor().getNombre() + " " + envio.getConductor().getApellidos(),
                 envio.getFechaCreacion(),
-                envio.getFechaModificacion()
-        );
+                envio.getFechaModificacion());
     }
 }

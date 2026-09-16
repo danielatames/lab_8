@@ -18,9 +18,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> manejarValidacion(MethodArgumentNotValidException ex) {
         Map<String, String> errores = new HashMap<>();
-        ex.getBindingResult().getFieldErrors().forEach(error ->
-                errores.put(error.getField(), error.getDefaultMessage())
-        );
+        ex.getBindingResult().getFieldErrors()
+                .forEach(error -> errores.put(error.getField(), error.getDefaultMessage()));
 
         Map<String, Object> respuesta = construirRespuestaBase(HttpStatus.BAD_REQUEST, "Error de validación");
         respuesta.put("errores", errores);
@@ -42,13 +41,15 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<Map<String, Object>> manejarCredencialesInvalidas(BadCredentialsException ex) {
-        Map<String, Object> respuesta = construirRespuestaBase(HttpStatus.UNAUTHORIZED, "Usuario o contraseña incorrectos");
+        Map<String, Object> respuesta = construirRespuestaBase(HttpStatus.UNAUTHORIZED,
+                "Usuario o contraseña incorrectos");
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(respuesta);
     }
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<Map<String, Object>> manejarAccesoDenegado(AccessDeniedException ex) {
-        Map<String, Object> respuesta = construirRespuestaBase(HttpStatus.FORBIDDEN, "No tiene permisos para realizar esta acción");
+        Map<String, Object> respuesta = construirRespuestaBase(HttpStatus.FORBIDDEN,
+                "No tiene permisos para realizar esta acción");
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(respuesta);
     }
 
@@ -62,9 +63,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> manejarErrorGenerico(Exception ex) {
         Map<String, Object> respuesta = construirRespuestaBase(
                 HttpStatus.INTERNAL_SERVER_ERROR,
-                "Ocurrió un error inesperado en el servidor"
-        );
+                "Ocurrió un error inesperado en el servidor");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(respuesta);
+    }
+
+    @ExceptionHandler(CapacidadExcedidaException.class)
+    public ResponseEntity<Map<String, Object>> manejarCapacidadExcedida(CapacidadExcedidaException ex) {
+        Map<String, Object> respuesta = construirRespuestaBase(HttpStatus.BAD_REQUEST, ex.getMessage());
+        return ResponseEntity.badRequest().body(respuesta);
     }
 
     private Map<String, Object> construirRespuestaBase(HttpStatus status, String mensaje) {
