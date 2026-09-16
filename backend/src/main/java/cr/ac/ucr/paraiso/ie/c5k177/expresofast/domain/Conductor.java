@@ -30,21 +30,62 @@ public class Conductor {
     @OneToMany(mappedBy = "conductor")
     private List<Envio> envios;
 
-    public Integer getId() { return id; }
-    public void setId(Integer id) { this.id = id; }
+    public Integer getId() {
+        return id;
+    }
 
-    public String getNombre() { return nombre; }
-    public void setNombre(String nombre) { this.nombre = nombre; }
+    public void setId(Integer id) {
+        this.id = id;
+    }
 
-    public String getApellidos() { return apellidos; }
-    public void setApellidos(String apellidos) { this.apellidos = apellidos; }
+    public String getNombre() {
+        return nombre;
+    }
 
-    public String getLicencia() { return licencia; }
-    public void setLicencia(String licencia) { this.licencia = licencia; }
+    public void setNombre(String nombre) {
+        this.nombre = nombre;
+    }
 
-    public String getTelefono() { return telefono; }
-    public void setTelefono(String telefono) { this.telefono = telefono; }
+    public String getApellidos() {
+        return apellidos;
+    }
 
-    public List<Envio> getEnvios() { return envios; }
-    public void setEnvios(List<Envio> envios) { this.envios = envios; }
+    public void setApellidos(String apellidos) {
+        this.apellidos = apellidos;
+    }
+
+    public String getLicencia() {
+        return licencia;
+    }
+
+    public void setLicencia(String licencia) {
+        this.licencia = licencia;
+    }
+
+    public String getTelefono() {
+        return telefono;
+    }
+
+    public void setTelefono(String telefono) {
+        this.telefono = telefono;
+    }
+
+    public List<Envio> getEnvios() {
+        return envios;
+    }
+
+    public void setEnvios(List<Envio> envios) {
+        this.envios = envios;
+    }
+
+    @Column(nullable = false)
+    private Boolean activo = true;
+
+    public Boolean getActivo() {
+        return activo;
+    }
+
+    public void setActivo(Boolean activo) {
+        this.activo = activo;
+    }
 }
