@@ -1,8 +1,27 @@
 const API_URL_BASE = 'http://localhost:8080';
-const API_URL = `${API_URL_BASE}/api/envios`;
+
+
+function decodificarJWT(token) {
+    try {
+        const payloadBase64 = token.split('.')[1];
+        const payloadJson = atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/'));
+        return JSON.parse(payloadJson);
+    } catch (error) {
+        console.error('Error al decodificar el token:', error);
+        return null;
+    }
+}
+
+function obtenerRolesDelToken() {
+    const token = sessionStorage.getItem('jwt_token');
+    if (!token) return [];
+    const payload = decodificarJWT(token);
+    return payload?.roles ?? [];
+}
+
 
 async function fetchWithAuth(url, options = {}) {
-    const token = localStorage.getItem('jwt_token');
+    const token = sessionStorage.getItem('jwt_token');
 
     const headers = {
         'Content-Type': 'application/json',
@@ -13,237 +32,229 @@ async function fetchWithAuth(url, options = {}) {
     const respuesta = await fetch(url, { ...options, headers });
 
     if (respuesta.status === 401 || respuesta.status === 403) {
-        localStorage.removeItem('jwt_token');
-        localStorage.removeItem('jwt_username');
-        localStorage.removeItem('jwt_roles');
-        window.location.href = 'login.html';
-        throw new Error('Sesión expirada');
+        sessionStorage.removeItem('jwt_token');
+        sessionStorage.removeItem('jwt_username');
+        window.location.href = 'index.html';
+        throw new Error('Sesión expirada o sin permisos');
     }
 
     return respuesta;
 }
 
-function verificarAutenticacion() {
-    const token = localStorage.getItem('jwt_token');
-    if (!token) {
-        window.location.href = 'login.html';
-        return false;
+function mostrarErroresValidacion(cuerpoError) {
+    const contenedor = document.getElementById('alertaErrores');
+    if (!contenedor) return;
+
+    let mensajes = [];
+    if (cuerpoError.errores) {
+        mensajes = Object.entries(cuerpoError.errores).map(([campo, msg]) => `${campo}: ${msg}`);
+    } else if (cuerpoError.error) {
+        mensajes = [cuerpoError.error];
     }
-    return true;
+
+    contenedor.innerHTML = `<strong>Error:</strong><ul>${mensajes.map(m => `<li>${m}</li>`).join('')}</ul>`;
+    contenedor.hidden = false;
 }
 
-function obtenerRoles() {
-    try {
-        return JSON.parse(localStorage.getItem('jwt_roles')) || [];
-    } catch {
-        return [];
-    }
+//login
+
+const formularioLogin = document.getElementById('loginForm');
+
+if (formularioLogin) {
+    formularioLogin.addEventListener('submit', async (evento) => {
+        evento.preventDefault();
+
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        const mensajeError = document.getElementById('loginError');
+
+        try {
+            const respuesta = await fetch(`${API_URL_BASE}/api/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+
+            if (!respuesta.ok) {
+                mensajeError.textContent = 'Usuario o contraseña incorrectos';
+                mensajeError.hidden = false;
+                return;
+            }
+
+            const datos = await respuesta.json();
+
+            sessionStorage.setItem('jwt_token', datos.token);
+            sessionStorage.setItem('jwt_username', datos.username);
+
+            window.location.href = 'dashboard.html';
+
+        } catch (error) {
+            console.error('Error al iniciar sesión:', error);
+            mensajeError.textContent = 'No se pudo conectar con el servidor';
+            mensajeError.hidden = false;
+        }
+    });
 }
+
+
 
 let envios = [];
 let filtroActual = 'TODOS';
-let bitacoraCompleta = [];
-let envioIdActualEnModal = null;
 
-function inicializarUI() {
-    const roles = obtenerRoles();
-    const username = localStorage.getItem('jwt_username');
-
-    document.getElementById('usuario-actual').textContent = username ? ` ${username}` : '';
-
-    if (roles.includes('ROLE_CONDUCTOR') && !roles.includes('ROLE_ADMIN') && !roles.includes('ROLE_OPERADOR')) {
-        document.getElementById('seccion-formulario').style.display = 'none';
+async function inicializarDashboard() {
+    const token = sessionStorage.getItem('jwt_token');
+    if (!token) {
+        window.location.href = 'index.html';
+        return;
     }
+
+    const roles = obtenerRolesDelToken();
+    const username = sessionStorage.getItem('jwt_username');
+
+    document.getElementById('nombreUsuario').textContent = `${username}`;
+
+    //solo visible para admin
+    if (roles.includes('ROLE_ADMIN')) {
+        document.getElementById('bitacoraPanel').hidden = false;
+    }
+
+    await cargarEnvios();
 }
 
 async function cargarEnvios() {
     try {
-        const respuesta = await fetchWithAuth(`${API_URL}/optimizados`);
+        const respuesta = await fetchWithAuth(`${API_URL_BASE}/api/envios/optimizados`);
         envios = await respuesta.json();
-        renderizarTablero();
+        actualizarKPIs();
+        renderizarGrid();
     } catch (error) {
         console.error('Error al cargar envíos:', error);
     }
 }
 
-function renderizarTablero() {
-    const contenedor = document.getElementById('tablero-envios');
+function actualizarKPIs() {
+    document.getElementById('kpiTotalEnvios').textContent = envios.length;
+    document.getElementById('kpiEntregados').textContent =
+        envios.filter(e => e.estadoEnvio === 'ENTREGADO').length;
+
+   
+    const roles = obtenerRolesDelToken();
+    if (roles.includes('ROLE_ADMIN')) {
+        fetchWithAuth(`${API_URL_BASE}/api/vehiculos`)
+            .then(r => r.json())
+            .then(vehiculos => {
+                document.getElementById('kpiVehiculosActivos').textContent =
+                    vehiculos.filter(v => v.estado === 'DISPONIBLE' || v.estado === 'EN_RUTA').length;
+            })
+            .catch(() => {
+                document.getElementById('kpiVehiculosActivos').textContent = '—';
+            });
+    } else {
+        document.getElementById('kpiVehiculosActivos').textContent = '—';
+    }
+}
+
+function renderizarGrid() {
+    const contenedor = document.getElementById('enviosGrid');
     contenedor.innerHTML = '';
 
-    const roles = obtenerRoles();
-    const puedeVerBitacora = roles.includes('ROLE_ADMIN') || roles.includes('ROLE_OPERADOR');
+    const roles = obtenerRolesDelToken();
+    const puedeMarcarEnTransito = roles.includes('ROLE_ADMIN');
+    const puedeMarcarEntregado = roles.includes('ROLE_ADMIN') || roles.includes('ROLE_CONDUCTOR');
 
     const enviosFiltrados = filtroActual === 'TODOS'
         ? envios
         : envios.filter(e => e.estadoEnvio === filtroActual);
 
-    document.getElementById('contador-envios').textContent = `${enviosFiltrados.length} envíos`;
-
     enviosFiltrados.forEach(envio => {
         const tarjeta = document.createElement('article');
         tarjeta.className = 'tarjeta-envio';
+
+        let botonesAccion = '';
+        if (puedeMarcarEnTransito && envio.estadoEnvio === 'PENDIENTE') {
+            botonesAccion += `<button onclick="actualizarEstado(${envio.id}, 'EN_TRANSITO')">Marcar en Tránsito</button>`;
+        }
+        if (puedeMarcarEntregado && envio.estadoEnvio === 'EN_TRANSITO') {
+            botonesAccion += `<button onclick="actualizarEstado(${envio.id}, 'ENTREGADO')">Marcar Entregado</button>`;
+        }
+
         tarjeta.innerHTML = `
             <h3>${envio.codigoRastreo}</h3>
             <span class="pill-status ${envio.estadoEnvio}">${envio.estadoEnvio}</span>
             <p><strong>Destino:</strong> ${envio.direccionDestino}</p>
             <p><strong>Peso:</strong> ${envio.pesoKg} kg</p>
-            <p><strong>Costo:</strong> ₡${envio.costo}</p>
             <p><strong>Vehículo:</strong> ${envio.placaVehiculo ?? '—'}</p>
             <p><strong>Conductor:</strong> ${envio.nombreConductor ?? '—'}</p>
-            <div class="tarjeta-acciones">
-                <button onclick="actualizarEstado(${envio.id}, 'EN_TRANSITO')">Marcar en Tránsito</button>
-                <button onclick="actualizarEstado(${envio.id}, 'ENTREGADO')">Marcar Entregado</button>
-            </div>
-            ${puedeVerBitacora ? `<button class="btn-bitacora" onclick="abrirBitacora(${envio.id})">Ver Bitácora</button>` : ''}
+            ${botonesAccion ? `<div class="tarjeta-acciones">${botonesAccion}</div>` : ''}
+            ${roles.includes('ROLE_ADMIN') ? `<button class="btn-bitacora" onclick="cargarBitacora(${envio.id})">Ver Bitácora</button>` : ''}
         `;
         contenedor.appendChild(tarjeta);
     });
 }
 
-async function registrarEnvio(datosEnvio) {
-    try {
-        const respuesta = await fetchWithAuth(API_URL, {
-            method: 'POST',
-            body: JSON.stringify(datosEnvio)
-        });
-
-        if (!respuesta.ok) {
-            const errorData = await respuesta.json();
-            const detalle = errorData.errores
-                ? Object.values(errorData.errores).join(', ')
-                : (errorData.error ?? 'No se pudo registrar el envío');
-            alert(`Error: ${detalle}`);
-            return;
-        }
-
-        await cargarEnvios();
-    } catch (error) {
-        console.error('Error al registrar envío:', error);
-    }
-}
-
 async function actualizarEstado(id, nuevoEstado) {
     try {
-        const respuesta = await fetchWithAuth(`${API_URL}/${id}/estado`, {
+        const respuesta = await fetchWithAuth(`${API_URL_BASE}/api/envios/${id}/estado`, {
             method: 'PATCH',
             body: JSON.stringify({ nuevoEstado, observaciones: '' })
         });
 
         if (!respuesta.ok) {
             const errorData = await respuesta.json();
-            alert(`Error: ${errorData.error ?? 'No se pudo actualizar el estado'}`);
+            mostrarErroresValidacion(errorData);
             return;
         }
 
+        document.getElementById('alertaErrores').hidden = true;
         await cargarEnvios();
     } catch (error) {
         console.error('Error al actualizar estado:', error);
     }
 }
 
-async function abrirBitacora(envioId) {
-    envioIdActualEnModal = envioId;
+async function cargarBitacora(envioId) {
     try {
-        const respuesta = await fetchWithAuth(`${API_URL}/${envioId}/bitacora`);
-        bitacoraCompleta = await respuesta.json();
-        renderizarBitacora(bitacoraCompleta);
-        document.getElementById('modal-bitacora').hidden = false;
+        const respuesta = await fetchWithAuth(`${API_URL_BASE}/api/envios/${envioId}/bitacora`);
+        const bitacora = await respuesta.json();
+
+        const contenedor = document.getElementById('bitacoraContenido');
+        if (bitacora.length === 0) {
+            contenedor.innerHTML = '<p>Sin registros para este envío.</p>';
+            return;
+        }
+
+        contenedor.innerHTML = bitacora.map(entrada => `
+            <div class="entrada-bitacora">
+                <p><strong>${entrada.estadoAnterior} → ${entrada.estadoNuevo}</strong></p>
+                <p>${new Date(entrada.fechaCambio).toLocaleString()}</p>
+                <p>${entrada.usuario}</p>
+            </div>
+        `).join('');
     } catch (error) {
         console.error('Error al cargar bitácora:', error);
     }
 }
 
-function renderizarBitacora(lista) {
-    const contenedor = document.getElementById('lista-bitacora');
+const navFiltros = document.querySelectorAll('.nav-filtro');
+navFiltros.forEach(boton => {
+    boton.addEventListener('click', () => {
+        navFiltros.forEach(b => b.classList.remove('activo'));
+        boton.classList.add('activo');
+        filtroActual = boton.dataset.estado;
+        renderizarGrid();
+    });
+});
 
-    if (lista.length === 0) {
-        contenedor.innerHTML = '<p>No hay registros de auditoría para este rango.</p>';
-        return;
-    }
-
-    contenedor.innerHTML = lista.map(entrada => `
-        <div class="entrada-bitacora">
-            <p><strong>${entrada.estadoAnterior} → ${entrada.estadoNuevo}</strong></p>
-            <p>${new Date(entrada.fechaCambio).toLocaleString()}</p>
-            <p>${entrada.usuario}</p>
-            ${entrada.observaciones ? `<p> ${entrada.observaciones}</p>` : ''}
-        </div>
-    `).join('');
+//logout
+const btnLogout = document.getElementById('btnLogout');
+if (btnLogout) {
+    btnLogout.addEventListener('click', () => {
+        sessionStorage.removeItem('jwt_token');
+        sessionStorage.removeItem('jwt_username');
+        window.location.href = 'index.html';
+    });
 }
 
-function filtrarBitacoraPorFecha() {
-    const desde = document.getElementById('fecha-inicio').value;
-    const hasta = document.getElementById('fecha-fin').value;
-
-    let filtrada = bitacoraCompleta;
-
-    if (desde) {
-        filtrada = filtrada.filter(e => new Date(e.fechaCambio) >= new Date(desde));
-    }
-    if (hasta) {
-        const hastaFin = new Date(hasta);
-        hastaFin.setHours(23, 59, 59, 999);
-        filtrada = filtrada.filter(e => new Date(e.fechaCambio) <= hastaFin);
-    }
-
-    renderizarBitacora(filtrada);
+if (document.getElementById('enviosGrid')) {
+    inicializarDashboard();
 }
-
-
-//eventos
-document.getElementById('form-envio').addEventListener('submit', (evento) => {
-    evento.preventDefault();
-
-    const nuevoEnvio = {
-        codigoRastreo: document.getElementById('codigoRastreo').value,
-        direccionDestino: document.getElementById('direccionDestino').value,
-        pesoKg: parseFloat(document.getElementById('pesoKg').value),
-        costo: parseFloat(document.getElementById('costo').value),
-        vehiculoId: parseInt(document.getElementById('vehiculoId').value),
-        conductorId: parseInt(document.getElementById('conductorId').value)
-    };
-
-    registrarEnvio(nuevoEnvio);
-    evento.target.reset();
-});
-
-document.getElementById('nav-filtros').addEventListener('click', (evento) => {
-    if (evento.target.classList.contains('filtro-btn')) {
-        document.querySelectorAll('.filtro-btn').forEach(btn => btn.classList.remove('activo'));
-        evento.target.classList.add('activo');
-        filtroActual = evento.target.dataset.estado;
-        renderizarTablero();
-    }
-});
-
-document.getElementById('btn-logout').addEventListener('click', () => {
-    localStorage.removeItem('jwt_token');
-    localStorage.removeItem('jwt_username');
-    localStorage.removeItem('jwt_roles');
-    window.location.href = 'login.html';
-});
-
-document.getElementById('btn-cerrar-modal').addEventListener('click', () => {
-    document.getElementById('modal-bitacora').hidden = true;
-});
-
-document.getElementById('btn-filtrar-fecha').addEventListener('click', filtrarBitacoraPorFecha);
-
-if (document.getElementById('tablero-envios')) {
-    if (verificarAutenticacion()) {
-        inicializarUI();
-        cargarEnvios();
-    }
-}
-
-document.addEventListener('keydown', (evento) => {
-    if (evento.key === 'Escape') {
-        document.getElementById('modal-bitacora').hidden = true;
-    }
-});
-
-document.getElementById('modal-bitacora').addEventListener('click', (evento) => {
-    if (evento.target.id === 'modal-bitacora') {
-        document.getElementById('modal-bitacora').hidden = true;
-    }
-});

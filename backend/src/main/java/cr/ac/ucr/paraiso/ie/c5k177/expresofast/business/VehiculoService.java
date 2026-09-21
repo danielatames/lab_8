@@ -8,7 +8,8 @@ import cr.ac.ucr.paraiso.ie.c5k177.expresofast.exception.DuplicateResourceExcept
 import cr.ac.ucr.paraiso.ie.c5k177.expresofast.exception.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import cr.ac.ucr.paraiso.ie.c5k177.expresofast.dto.VehiculoResponseDTO;
+import java.util.stream.Collectors;
 import java.util.List;
 
 @Service
@@ -58,4 +59,17 @@ public class VehiculoService {
     public Vehiculo crear(Vehiculo vehiculo) {
         return registrarVehiculo(vehiculo);
     }
+
+    @Transactional(readOnly = true)
+public List<VehiculoResponseDTO> listarTodosDTO() {
+    return vehiculoRepository.findAll().stream()
+            .map(v -> new VehiculoResponseDTO(
+                    v.getId(),
+                    v.getPlaca(),
+                    v.getCapacidadKg(),
+                    v.getEstado(),
+                    v.getEmpresa() != null ? v.getEmpresa().getNombre() : null
+            ))
+            .collect(Collectors.toList());
+}
 }

@@ -5,6 +5,7 @@ import cr.ac.ucr.paraiso.ie.c5k177.expresofast.domain.Vehiculo;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import cr.ac.ucr.paraiso.ie.c5k177.expresofast.dto.VehiculoResponseDTO;
 
 import java.util.List;
 
@@ -20,8 +21,8 @@ public class VehiculoController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Vehiculo>> listarTodos() {
-        return ResponseEntity.ok(vehiculoService.listarTodos());
+    public ResponseEntity<List<VehiculoResponseDTO>> listarTodos() {
+        return ResponseEntity.ok(vehiculoService.listarTodosDTO());
     }
 
     @PostMapping

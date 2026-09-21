@@ -61,6 +61,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> manejarErrorGenerico(Exception ex) {
+    
         Map<String, Object> respuesta = construirRespuestaBase(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "Ocurrió un error inesperado en el servidor");

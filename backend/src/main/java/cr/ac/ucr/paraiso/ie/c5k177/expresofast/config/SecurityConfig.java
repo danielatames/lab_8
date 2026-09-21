@@ -42,39 +42,42 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("*"));
+        configuration.setAllowedOriginPatterns(List.of(
+                "http://localhost:5500",
+                "http://127.0.0.1:5500",
+                "null",
+                "file://*"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
+        source.registerCorsConfiguration("/api/**", configuration);
         return source;
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .csrf(csrf -> csrf.disable())
-            .sessionManagement(sess -> sess
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/envios/optimizados")
-                    .hasAnyRole("ADMIN", "OPERADOR", "CONDUCTOR")
-                .requestMatchers(HttpMethod.POST, "/api/envios")
-                    .hasAnyRole("ADMIN", "OPERADOR")
-                .requestMatchers(HttpMethod.PATCH, "/api/envios/*/estado")
-                    .hasAnyRole("ADMIN", "CONDUCTOR")
-                .requestMatchers(HttpMethod.GET, "/api/envios/*/bitacora")
-                    .hasAnyRole("ADMIN", "OPERADOR")
-                .requestMatchers("/api/vehiculos/**")
-                    .hasRole("ADMIN")
-                .anyRequest().authenticated()
-            )
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(sess -> sess
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/envios/optimizados")
+                        .hasAnyRole("ADMIN", "OPERADOR", "CONDUCTOR")
+                        .requestMatchers(HttpMethod.POST, "/api/envios")
+                        .hasAnyRole("ADMIN", "OPERADOR")
+                        .requestMatchers(HttpMethod.PATCH, "/api/envios/*/estado")
+                        .hasAnyRole("ADMIN", "CONDUCTOR")
+                        .requestMatchers(HttpMethod.GET, "/api/envios/*/bitacora")
+                        .hasAnyRole("ADMIN", "OPERADOR")
+                        .requestMatchers("/api/vehiculos/**")
+                        .hasRole("ADMIN")
+                        .anyRequest().authenticated())
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

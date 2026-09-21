@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ExpresoFast — Consola de Operaciones</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <header class="app-header">
+        <div class="header-logo">
+            <span aria-hidden="true"></span>
+            <span>ExpresoFast</span>
+        </div>
+        <div class="header-usuario">
+            <span id="nombreUsuario"></span>
+            <button id="btnLogout" type="button">Cerrar sesión</button>
+        </div>
+    </header>
+
+    <nav class="app-nav" aria-label="Filtros de envíos">
+        <button type="button" class="nav-filtro activo" data-estado="TODOS">Todos</button>
+        <button type="button" class="nav-filtro" data-estado="PENDIENTE">Pendientes</button>
+        <button type="button" class="nav-filtro" data-estado="EN_TRANSITO">En Tránsito</button>
+        <button type="button" class="nav-filtro" data-estado="ENTREGADO">Entregados</button>
+    </nav>
+
+    <div class="app-layout">
+
+        <main class="app-main">
+
+            <section id="kpiSection" aria-label="Indicadores clave">
+                <article class="kpi-card">
+                    <h2>Total Envíos</h2>
+                    <p id="kpiTotalEnvios">0</p>
+                </article>
+                <article class="kpi-card">
+                    <h2>Vehículos Activos</h2>
+                    <p id="kpiVehiculosActivos">0</p>
+                </article>
+                <article class="kpi-card">
+                    <h2>Paquetes Entregados</h2>
+                    <p id="kpiEntregados">0</p>
+                </article>
+            </section>
+
+            <div
+                id="alertaErrores"
+                class="alerta-error"
+                role="alert"
+                aria-live="assertive"
+                hidden>
+            </div>
+
+            <section id="enviosGrid" aria-label="Envíos registrados">
+            </section>
+
+        </main>
+
+        <aside id="bitacoraPanel" aria-label="Bitácora de auditoría" hidden>
+            <h2>Bitácora de Auditoría</h2>
+            <div id="bitacoraContenido"></div>
+        </aside>
+
+    </div>
+
+    <footer class="app-footer">
+        <p>&copy; 2026 ExpresoFast — Todos los derechos reservados.</p>
+        <p><a href="#">Soporte técnico</a> · <a href="#">Contacto</a></p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
