@@ -28,9 +28,9 @@
 2. Iniciá sesión con cualquiera de los usuarios de prueba.
 
 ## Usuarios de Prueba
-| admin | admin123 | 
-| operador1 | oper123 | 
-| conductor1 | cond123 |
+1. admin= admin123 
+2. operador1= oper123  
+3. conductor1= cond123 
 
 ## Funcionalidad por Rol
 
