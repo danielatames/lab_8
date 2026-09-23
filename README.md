@@ -28,9 +28,6 @@
 2. Iniciá sesión con cualquiera de los usuarios de prueba.
 
 ## Usuarios de Prueba
-
-| Usuario | Contraseña |
-|---|---|---|
 | admin | admin123 | 
 | operador1 | oper123 | 
 | conductor1 | cond123 |
